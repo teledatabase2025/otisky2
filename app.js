@@ -14,8 +14,8 @@ const prints = [
     ],
     candidates: [
       { name: "Hana Koubová", img: "ot11.png", match: 94.3, related: false },
-      { name: "Kristýna Doležalová", img: "ot13.png", match: 89.2, related: true },
-      { name: "Lenka Pospíšilová", img: "ot12.png", match: 91.4, related: false }
+      { name: "Kristýna Doležalová", img: "ot12.png", match: 89.2, related: true },
+      { name: "Lenka Pospíšilová", img: "ot13.png", match: 91.4, related: false }
     ]
   },
   {
@@ -63,8 +63,8 @@ const prints = [
     ],
     candidates: [
       { name: "Josef Pospíšil", img: "ot41.png", match: 94.6, initialUnrelated: true, detail: "Stav v evidenci: zesnulý.", dead: true },
-      { name: "František Král", img: "ot43.png", match: 87.7, initialUnrelated: true, detail: "Lesní dělník v pohraničí (Hvozdná nad Radbuzou)." },
-      { name: "Karel Liebknecht", img: "ot42.png", match: 91.2, initialUnrelated: true, detail: "Stejný otisk nalezen na vozidle Sebastiana Rýdla po autonehodě dne 9. 6. 2026.", highlight: true }
+      { name: "František Král", img: "ot42.png", match: 87.7, initialUnrelated: true, detail: "Lesní dělník v pohraničí (Hvozdná nad Radbuzou)." },
+      { name: "Karel Liebknecht", img: "ot43.png", match: 91.2, initialUnrelated: true, detail: "Stejný otisk nalezen na vozidle Sebastiana Rýdla po autonehodě dne 9. 6. 2026.", highlight: true }
     ]
   }
 ];
@@ -127,20 +127,12 @@ function startScan() {
     </div>
     <div class="status-strip">
       <span class="live"><span class="dot"></span> DETEKCE LATENTNÍCH STOP</span>
-      <span id="scanText">Inicializuji vícestupňovou analýzu povrchu…</span>
-    </div>
-    <div class="method-strip" id="methodStrip">
-      <div class="scan-method" data-method="0"><b>01</b><span>Optický kontrast</span></div>
-      <div class="scan-method" data-method="1"><b>02</b><span>Papilární struktura</span></div>
-      <div class="scan-method" data-method="2"><b>03</b><span>Reziduální mapa</span></div>
-      <div class="scan-method" data-method="3"><b>04</b><span>Hranová detekce</span></div>
-      <div class="scan-method" data-method="4"><b>05</b><span>Segmentace stop</span></div>
+      <span id="scanText">Analýza povrchu…</span>
     </div>
     <div class="envelope-stage">
       <div class="envelope-wrap">
         <img src="${ASSET('obalka.jpg')}" alt="Obálka nalezená v klubu Nocturno">
         <div class="scanline"></div>
-        <div class="scanline secondary"></div>
         <div class="fp-marker fp1" id="fp1"><span>STOPA 01</span></div>
         <div class="fp-marker fp2" id="fp2"><span>STOPA 02</span></div>
         <div class="fp-marker fp3" id="fp3"><span>STOPA 03</span></div>
@@ -149,38 +141,20 @@ function startScan() {
       </div>
     </div>`;
 
-  const txt = document.getElementById("scanText");
-  const methods = [...document.querySelectorAll(".scan-method")];
-  const setMethod = (index, text) => {
-    methods.forEach((el, i) => {
-      el.classList.toggle("active", i === index);
-      el.classList.toggle("done", i < index);
-    });
-    if (txt) txt.textContent = text;
-  };
-  const detect = (index, message) => {
-    const el = document.getElementById(`fp${index}`);
-    if (el) el.classList.add("detected");
+  const timings = [700, 2300, 4200, 5500];
+  timings.forEach((t, i) => setTimeout(() => {
+    const el = document.getElementById(`fp${i+1}`);
+    if (!el) return;
+    el.classList.add("detected");
     const counter = document.getElementById("scanCounter");
-    if (counter) counter.textContent = `DETEKOVÁNO: ${index} / 4`;
-    if (txt) txt.textContent = message;
-  };
-
-  setTimeout(() => setMethod(0, "Normalizuji osvětlení a lokální kontrast povrchu…"), 500);
-  setTimeout(() => setMethod(1, "Vyhledávám souvislé papilární struktury a jejich tok…"), 2800);
-  setTimeout(() => detect(1, "Kandidátní oblast potvrzena – latentní stopa 01."), 5000);
-  setTimeout(() => setMethod(2, "Analyzuji reziduální mapu dotykových stop…"), 6000);
-  setTimeout(() => detect(2, "Kandidátní oblast potvrzena – latentní stopa 02."), 7900);
-  setTimeout(() => setMethod(3, "Provádím hranovou detekci neúplných papilárních linií…"), 8900);
-  setTimeout(() => detect(3, "Kandidátní oblast potvrzena – latentní stopa 03."), 10500);
-  setTimeout(() => setMethod(4, "Segmentuji detekované oblasti a odděluji překryvy…"), 11400);
-  setTimeout(() => detect(4, "Kandidátní oblast potvrzena – latentní stopa 04."), 12800);
+    if (counter) counter.textContent = `DETEKOVÁNO: ${i+1} / 4`;
+  }, t));
   setTimeout(() => {
-    methods.forEach(el => { el.classList.remove("active"); el.classList.add("done"); });
-    if (txt) txt.textContent = "Vícestupňová analýza dokončena – detekovány 4 latentní stopy.";
-    showToast("DETEKOVÁNY 4 LATENTNÍ STOPY", "success", 1900);
-  }, 14100);
-  setTimeout(showFoundPrints, 15800);
+    const txt = document.getElementById("scanText");
+    if (txt) txt.textContent = "Detekovány 4 latentní stopy";
+    showToast("DETEKOVÁNY 4 LATENTNÍ STOPY", "success", 1500);
+  }, 6100);
+  setTimeout(showFoundPrints, 7200);
 }
 
 function showFoundPrints() {
