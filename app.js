@@ -1,5 +1,5 @@
 const ASSET = (name) => `assets/${name}`;
-const AUTOSERVIS_URL = "https://example.com/"; // TODO: nahraďte finálním externím odkazem.
+const AUTOSERVIS_URL = ""; // TODO: sem později vložte finální externí odkaz.
 
 const prints = [
   {
@@ -14,8 +14,8 @@ const prints = [
     ],
     candidates: [
       { name: "Hana Koubová", img: "ot11.png", match: 94.3, related: false },
-      { name: "Lenka Pospíšilová", img: "ot12.png", match: 91.4, related: false },
-      { name: "Kristýna Doležalová", img: "ot13.png", match: 89.2, related: true }
+      { name: "Kristýna Doležalová", img: "ot13.png", match: 89.2, related: true },
+      { name: "Lenka Pospíšilová", img: "ot12.png", match: 91.4, related: false }
     ]
   },
   {
@@ -30,8 +30,8 @@ const prints = [
     ],
     candidates: [
       { name: "Martina Vacková", img: "ot21.png", match: 94.8, related: false },
-      { name: "Kristýna Francová", img: "ot23.png", match: 91.3, related: false },
-      { name: "Tamara Vrbová", img: "ot22.png", match: 88.6, related: true }
+      { name: "Tamara Vrbová", img: "ot22.png", match: 88.6, related: true },
+      { name: "Kristýna Francová", img: "ot23.png", match: 91.3, related: false }
     ]
   },
   {
@@ -63,8 +63,8 @@ const prints = [
     ],
     candidates: [
       { name: "Josef Pospíšil", img: "ot41.png", match: 94.6, initialUnrelated: true, detail: "Stav v evidenci: zesnulý.", dead: true },
-      { name: "Karel Liebknecht", img: "ot42.png", match: 91.2, initialUnrelated: true, detail: "Stejný otisk nalezen na vozidle Sebastiana Rýdla po autonehodě dne 9. 6. 2026.", highlight: true },
-      { name: "František Král", img: "ot43.png", match: 87.7, initialUnrelated: true, detail: "Lesní dělník v pohraničí (Hvozdná nad Radbuzou)." }
+      { name: "František Král", img: "ot43.png", match: 87.7, initialUnrelated: true, detail: "Lesní dělník v pohraničí (Hvozdná nad Radbuzou)." },
+      { name: "Karel Liebknecht", img: "ot42.png", match: 91.2, initialUnrelated: true, detail: "Stejný otisk nalezen na vozidle Sebastiana Rýdla po autonehodě dne 9. 6. 2026.", highlight: true }
     ]
   }
 ];
@@ -77,6 +77,9 @@ const toast = document.getElementById("toast");
 let currentPrint = 0;
 let checkedCandidates = new Set();
 let deepStageRunning = false;
+let deepResultsReady = false;
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 startBtn.addEventListener("click", () => {
   modal.classList.remove("active");
@@ -88,6 +91,28 @@ function showToast(message, type = "info", ms = 2300) {
   toast.className = `toast ${type} show`;
   clearTimeout(showToast._t);
   showToast._t = setTimeout(() => toast.classList.remove("show"), ms);
+}
+
+function showSystemOverlay(title, body, type = "info", ms = 2200) {
+  return new Promise(resolve => {
+    const old = document.getElementById("systemOverlay");
+    if (old) old.remove();
+    const layer = document.createElement("div");
+    layer.id = "systemOverlay";
+    layer.className = `system-overlay ${type}`;
+    layer.innerHTML = `
+      <div class="system-card">
+        <div class="system-icon">${type === 'error' ? '!' : type === 'success' ? '✓' : '◎'}</div>
+        <h3>${title}</h3>
+        <p>${body}</p>
+      </div>`;
+    document.body.appendChild(layer);
+    requestAnimationFrame(() => layer.classList.add("show"));
+    setTimeout(() => {
+      layer.classList.remove("show");
+      setTimeout(() => { layer.remove(); resolve(); }, 260);
+    }, ms);
+  });
 }
 
 function esc(s) {
@@ -102,12 +127,20 @@ function startScan() {
     </div>
     <div class="status-strip">
       <span class="live"><span class="dot"></span> DETEKCE LATENTNÍCH STOP</span>
-      <span id="scanText">Analýza povrchu…</span>
+      <span id="scanText">Inicializuji vícestupňovou analýzu povrchu…</span>
+    </div>
+    <div class="method-strip" id="methodStrip">
+      <div class="scan-method" data-method="0"><b>01</b><span>Optický kontrast</span></div>
+      <div class="scan-method" data-method="1"><b>02</b><span>Papilární struktura</span></div>
+      <div class="scan-method" data-method="2"><b>03</b><span>Reziduální mapa</span></div>
+      <div class="scan-method" data-method="3"><b>04</b><span>Hranová detekce</span></div>
+      <div class="scan-method" data-method="4"><b>05</b><span>Segmentace stop</span></div>
     </div>
     <div class="envelope-stage">
       <div class="envelope-wrap">
         <img src="${ASSET('obalka.jpg')}" alt="Obálka nalezená v klubu Nocturno">
         <div class="scanline"></div>
+        <div class="scanline secondary"></div>
         <div class="fp-marker fp1" id="fp1"><span>STOPA 01</span></div>
         <div class="fp-marker fp2" id="fp2"><span>STOPA 02</span></div>
         <div class="fp-marker fp3" id="fp3"><span>STOPA 03</span></div>
@@ -116,20 +149,38 @@ function startScan() {
       </div>
     </div>`;
 
-  const timings = [700, 2300, 4200, 5500];
-  timings.forEach((t, i) => setTimeout(() => {
-    const el = document.getElementById(`fp${i+1}`);
-    if (!el) return;
-    el.classList.add("detected");
+  const txt = document.getElementById("scanText");
+  const methods = [...document.querySelectorAll(".scan-method")];
+  const setMethod = (index, text) => {
+    methods.forEach((el, i) => {
+      el.classList.toggle("active", i === index);
+      el.classList.toggle("done", i < index);
+    });
+    if (txt) txt.textContent = text;
+  };
+  const detect = (index, message) => {
+    const el = document.getElementById(`fp${index}`);
+    if (el) el.classList.add("detected");
     const counter = document.getElementById("scanCounter");
-    if (counter) counter.textContent = `DETEKOVÁNO: ${i+1} / 4`;
-  }, t));
+    if (counter) counter.textContent = `DETEKOVÁNO: ${index} / 4`;
+    if (txt) txt.textContent = message;
+  };
+
+  setTimeout(() => setMethod(0, "Normalizuji osvětlení a lokální kontrast povrchu…"), 500);
+  setTimeout(() => setMethod(1, "Vyhledávám souvislé papilární struktury a jejich tok…"), 2800);
+  setTimeout(() => detect(1, "Kandidátní oblast potvrzena – latentní stopa 01."), 5000);
+  setTimeout(() => setMethod(2, "Analyzuji reziduální mapu dotykových stop…"), 6000);
+  setTimeout(() => detect(2, "Kandidátní oblast potvrzena – latentní stopa 02."), 7900);
+  setTimeout(() => setMethod(3, "Provádím hranovou detekci neúplných papilárních linií…"), 8900);
+  setTimeout(() => detect(3, "Kandidátní oblast potvrzena – latentní stopa 03."), 10500);
+  setTimeout(() => setMethod(4, "Segmentuji detekované oblasti a odděluji překryvy…"), 11400);
+  setTimeout(() => detect(4, "Kandidátní oblast potvrzena – latentní stopa 04."), 12800);
   setTimeout(() => {
-    const txt = document.getElementById("scanText");
-    if (txt) txt.textContent = "Detekovány 4 latentní stopy";
-    showToast("DETEKOVÁNY 4 LATENTNÍ STOPY", "success", 1500);
-  }, 6100);
-  setTimeout(showFoundPrints, 7200);
+    methods.forEach(el => { el.classList.remove("active"); el.classList.add("done"); });
+    if (txt) txt.textContent = "Vícestupňová analýza dokončena – detekovány 4 latentní stopy.";
+    showToast("DETEKOVÁNY 4 LATENTNÍ STOPY", "success", 1900);
+  }, 14100);
+  setTimeout(showFoundPrints, 15800);
 }
 
 function showFoundPrints() {
@@ -163,6 +214,7 @@ function openPrint(index) {
   currentPrint = index;
   checkedCandidates = new Set();
   deepStageRunning = false;
+  deepResultsReady = false;
   const p = prints[index];
   workspace.innerHTML = `
     <div class="section-title">
@@ -219,8 +271,7 @@ function openPrint(index) {
 
 function getEnteredSignature(p) {
   return p.groups.filter(g => g.count > 0).map((g, gi) => {
-    const vals = [...document.querySelectorAll(`.sig-input[data-gi="${gi}"]`)].map(i => i.value.trim().toUpperCase());
-    return vals;
+    return [...document.querySelectorAll(`.sig-input[data-gi="${gi}"]`)].map(i => i.value.trim().toUpperCase());
   });
 }
 
@@ -230,13 +281,13 @@ function validateSignature() {
   const expected = p.groups.filter(g => g.count > 0).map(g => g.answers);
   const ok = entered.length === expected.length && entered.every((arr, gi) => arr.length === expected[gi].length && arr.every((v, ii) => v === expected[gi][ii]));
   if (!ok) {
-    showToast("Biometrický podpis neodpovídá zadání. Otisk není možné zpracovat.", "error", 2800);
+    showToast("Biometrický podpis neodpovídá zadání. Otisk není možné zpracovat.", "error", 3000);
     return;
   }
-  showToast("Biometrický podpis ověřen. Zadání odpovídá markantové mapě.", "success", 1800);
+  showToast("Biometrický podpis ověřen. Zadání odpovídá markantové mapě.", "success", 2200);
   document.querySelectorAll('.sig-input').forEach(i => i.disabled = true);
   document.getElementById("validateSignature").disabled = true;
-  setTimeout(() => runDatabaseComparison(p), 650);
+  setTimeout(() => runDatabaseComparison(p), 900);
 }
 
 function runDatabaseComparison(p) {
@@ -264,21 +315,20 @@ function runDatabaseComparison(p) {
     log.textContent = logs[Math.min(logs.length-1, Math.floor(n/27))];
     if (n >= 100) {
       clearInterval(timer);
-      setTimeout(() => showCandidates(p), 450);
+      setTimeout(() => showCandidates(p), 500);
     }
-  }, 110);
+  }, 125);
 }
 
 function showCandidates(p) {
   const area = document.getElementById("resultArea");
-  const sorted = [...p.candidates].sort((a,b) => b.match-a.match);
   area.innerHTML = `
     <div class="candidate-head">
       <h3>KANDIDÁTNÍ SHODY ≥ 85 %</h3>
       <p>Vyberte osobu s nejpravděpodobnější souvislostí s případem.</p>
     </div>
-    <div class="candidates ${sorted.length===2?'two':''}">
-      ${sorted.map((c, i) => candidateCard(c, i, false)).join('')}
+    <div class="candidates ${p.candidates.length===2?'two':''}">
+      ${p.candidates.map((c, i) => candidateCard(c, i, false, true)).join('')}
     </div>
     <div id="deepArea"></div>`;
   document.querySelectorAll('.candidate button').forEach(btn => {
@@ -286,9 +336,12 @@ function showCandidates(p) {
   });
 }
 
-function candidateCard(c, i, details) {
+function candidateCard(c, i, details, selectable = false) {
+  const highlightClass = details && c.highlight ? 'highlight' : '';
+  const revealClass = details ? 'detail-reveal' : '';
+  const delay = details ? `style="animation-delay:${i * 0.42}s"` : '';
   return `
-    <article class="candidate ${details && c.highlight ? 'highlight' : ''}" data-name="${esc(c.name)}">
+    <article class="candidate ${highlightClass} ${revealClass}" ${delay} data-name="${esc(c.name)}">
       <img src="${ASSET(c.img)}" alt="${esc(c.name)}">
       <h4>${esc(c.name)}</h4>
       <div class="match">KOMPATIBILITA: ${c.match.toFixed(1).replace('.',',')} %</div>
@@ -296,8 +349,22 @@ function candidateCard(c, i, details) {
         ${c.dead ? '<span class="badge dead">Zesnulý</span><br><br>' : ''}
         ${esc(c.detail || '')}
       </div>` : ''}
-      ${!details ? `<button class="btn secondary" data-name="${esc(c.name)}">PROVĚŘIT SOUVISLOST</button>` : ''}
+      ${selectable ? `<button class="btn secondary" data-name="${esc(c.name)}">${details ? 'VYBRAT TUTO OSOBU' : 'PROVĚŘIT SOUVISLOST'}</button>` : ''}
     </article>`;
+}
+
+function flashCard(card, type) {
+  if (!card) return;
+  card.classList.remove('confirmed', 'rejected');
+  void card.offsetWidth;
+  card.classList.add(type === 'success' ? 'confirmed' : 'rejected');
+  setTimeout(() => card.classList.remove('rejected'), 1700);
+}
+
+function flashCandidateGroup(type = 'error') {
+  document.querySelectorAll('.candidate').forEach((card, i) => {
+    setTimeout(() => flashCard(card, type), i * 140);
+  });
 }
 
 function inspectCandidate(name) {
@@ -310,74 +377,202 @@ function inspectCandidate(name) {
 
   if (p.id <= 2) {
     if (c.related) {
-      showToast("Souvislost s případem nalezena.", "success", 2200);
-      const buttons = document.querySelectorAll('.candidate button');
-      buttons.forEach(b => b.disabled = true);
-      appendNextButton();
+      flashCard(card, 'success');
+      showToast("Souvislost s případem nalezena.", "success", 3000);
+      document.querySelectorAll('.candidate button').forEach(b => b.disabled = true);
+      setTimeout(() => {
+        appendInlineConfirmation("SOULAD POTVRZEN", "Dostupné případové údaje potvrzují relevantní souvislost vybrané osoby.");
+        appendNextButton();
+      }, 1500);
     } else {
-      showToast("Tato osoba s případem pravděpodobně nesouvisí.", "error", 2300);
+      flashCard(card, 'error');
+      showToast("Tato osoba s případem pravděpodobně nesouvisí.", "error", 2600);
     }
     return;
   }
 
-  showToast("Tato osoba s případem pravděpodobně nesouvisí.", "error", 2000);
+  flashCard(card, 'error');
+  showToast("Tato osoba s případem pravděpodobně nesouvisí.", "error", 2200);
   if (checkedCandidates.size === p.candidates.length && !deepStageRunning) {
     deepStageRunning = true;
     document.querySelectorAll('.candidate button').forEach(b => b.disabled = true);
-    setTimeout(() => runDeepAnalysis(p), 1400);
+    beginDeepFailureSequence(p);
   }
+}
+
+async function beginDeepFailureSequence(p) {
+  await sleep(2400);
+  flashCandidateGroup('error');
+  showToast("Ani u jedné osoby nebyla nalezena shoda!", "error", 3400);
+  await sleep(3700);
+  await showSystemOverlay(
+    "ZAHAJUJI PODROBNOU ANALÝZU",
+    "Standardní případové vazby nebyly nalezeny. DAKTIS rozšiřuje prověření o evidenční, pracovní a institucionální záznamy.",
+    "info",
+    2600
+  );
+  runDeepAnalysis(p);
+}
+
+function appendInlineConfirmation(title, text) {
+  const area = document.getElementById("resultArea");
+  if (!area || document.getElementById('inlineConfirmation')) return;
+  area.insertAdjacentHTML('beforeend', `
+    <div id="inlineConfirmation" class="inline-confirmation">
+      <strong>${title}</strong><span>${text}</span>
+    </div>`);
 }
 
 function appendNextButton() {
   const area = document.getElementById("resultArea");
-  if (document.getElementById('nextPrintBtn')) return;
+  if (!area || document.getElementById('nextPrintBtn')) return;
   const next = currentPrint + 1;
   if (next < prints.length) {
-    area.insertAdjacentHTML('beforeend', `<div class="action-row"><button id="nextPrintBtn" class="btn primary">K POROVNÁNÍ ${ordinalCzech(next+1)} OTISKU</button></div>`);
-    document.getElementById('nextPrintBtn').addEventListener('click', () => openPrint(next));
+    area.insertAdjacentHTML('beforeend', `<div class="action-row next-action"><button id="nextPrintBtn" class="btn primary">K POROVNÁNÍ ${ordinalCzech(next+1)} OTISKU</button></div>`);
+    const btn = document.getElementById('nextPrintBtn');
+    btn.addEventListener('click', () => openPrint(next));
+    setTimeout(() => btn.scrollIntoView({behavior:'smooth', block:'center'}), 150);
   }
 }
 
 function ordinalCzech(n){ return ({2:'DRUHÉHO',3:'TŘETÍHO',4:'ČTVRTÉHO'})[n] || `${n}.`; }
 
 function runDeepAnalysis(p) {
-  const deep = document.getElementById('deepArea');
+  const deep = document.getElementById('deepArea') || document.getElementById('resultArea');
   deep.innerHTML = `
-    <div class="deep-analysis">
-      <div class="head">Rozšířená analýza souvislostí</div>
+    <div class="deep-analysis emphasized">
+      <div class="head">Podrobná analýza souvislostí</div>
       <div class="body">
-        <div class="scantext">Načítám podrobné prozkoumávání souvislostí…<br>Propojuji evidenční, pracovní a případové záznamy…</div>
+        <div class="scantext" id="deepScanText">Propojuji evidenční, pracovní a případové záznamy…</div>
         <div class="bar"><span></span></div>
+        <div class="analysis-steps">
+          <span class="active">Evidence osob</span><span>Pracovní vazby</span><span>Instituce</span><span>Případové stopy</span>
+        </div>
       </div>
     </div>`;
-  setTimeout(() => showDeepResults(p), 3100);
+  const deepText = document.getElementById('deepScanText');
+  const steps = [...document.querySelectorAll('.analysis-steps span')];
+  const messages = [
+    "Kontroluji rozšířené evidenční záznamy…",
+    "Prověřuji pracovní a profesní vazby…",
+    "Propojuji institucionální údaje…",
+    "Porovnávám vazby s předmětem a případem…"
+  ];
+  steps.forEach((step, i) => setTimeout(() => {
+    steps.forEach((s, j) => { s.classList.toggle('active', j === i); s.classList.toggle('done', j < i); });
+    if (deepText) deepText.textContent = messages[i];
+  }, i * 900));
+  setTimeout(() => showDeepResults(p), 4100);
 }
 
 function showDeepResults(p) {
-  const deep = document.getElementById('deepArea');
-  deep.innerHTML = `
-    <div class="candidate-head">
+  deepResultsReady = true;
+  checkedCandidates = new Set();
+  const area = document.getElementById('resultArea');
+  area.innerHTML = `
+    <div class="analysis-result-banner">
+      <strong>PODROBNÁ ANALÝZA DOKONČENA</strong>
+      <span>Byly dohledány další údaje. Prohlédněte jednotlivé výsledky a znovu vyberte nejpravděpodobnější osobu.</span>
+    </div>
+    <div class="candidate-head deep-heading">
       <h3>ROZŠÍŘENÉ PROVĚŘENÍ KANDIDÁTŮ</h3>
-      <p>Byly nalezeny další evidenční souvislosti.</p>
+      <p>Každý profil byl doplněn o nově nalezenou souvislost.</p>
     </div>
     <div class="candidates ${p.candidates.length===2?'two':''}">
-      ${[...p.candidates].sort((a,b) => b.match-a.match).map((c,i) => candidateCard(c,i,true)).join('')}
+      ${p.candidates.map((c,i) => candidateCard(c,i,true,true)).join('')}
     </div>
     <div id="deepFollow"></div>`;
 
+  document.querySelectorAll('.candidate button').forEach(btn => {
+    btn.addEventListener('click', () => inspectDeepCandidate(btn.dataset.name));
+  });
+
+  setTimeout(() => {
+    const first = document.querySelector('.candidate.detail-reveal');
+    if (first) first.scrollIntoView({behavior:'smooth', block:'center'});
+  }, 350);
+}
+
+function inspectDeepCandidate(name) {
+  const p = prints[currentPrint];
+  const c = p.candidates.find(x => x.name === name);
+  if (!c) return;
+  const card = document.querySelector(`.candidate[data-name="${CSS.escape(name)}"]`);
+
   if (p.id === 3) {
-    showToast("Pravděpodobná souvislost nalezena: Radka Müllerová.", "success", 3000);
-    setTimeout(appendNextButton, 850);
-  } else if (p.id === 4) {
-    showToast("Významná případová stopa nalezena u Karla Liebknechta.", "success", 2800);
-    setTimeout(() => runProfessionalLink(), 1100);
+    if (c.highlight) {
+      flashCard(card, 'success');
+      showToast("Pravděpodobná souvislost nalezena: Radka Müllerová.", "success", 3200);
+      document.querySelectorAll('.candidate button').forEach(b => b.disabled = true);
+      appendInlineConfirmation("PRAVDĚPODOBNÁ SOUVISLOST NALEZENA", "Profesní zařazení Radky Müllerové odpovídá možnému kontaktu s bankovní obálkou.");
+      setTimeout(appendNextButton, 1300);
+    } else {
+      flashCard(card, 'error');
+      showToast("Tato osoba s předmětem pravděpodobně nesouvisí.", "error", 2500);
+    }
+    return;
   }
+
+  if (p.id === 4) {
+    if (c.highlight) {
+      flashCard(card, 'success');
+      showToast("Významná případová souvislost nalezena u Karla Liebknechta.", "success", 3200);
+      document.querySelectorAll('.candidate button').forEach(b => b.disabled = true);
+      showFingerprintVerificationButton();
+    } else {
+      flashCard(card, 'error');
+      showToast("Tato osoba s případem pravděpodobně nesouvisí.", "error", 2500);
+    }
+  }
+}
+
+function showFingerprintVerificationButton() {
+  const follow = document.getElementById('deepFollow');
+  if (!follow) return;
+  follow.innerHTML = `
+    <div class="deep-analysis link-check prompt">
+      <div class="head">Karel Liebknecht – návaznost na další evidovanou stopu</div>
+      <div class="body">
+        <p>V databázi je u osoby evidována shoda s otiskem nalezeným na vozidle Sebastiana Rýdla. Pro potvrzení návaznosti proveďte cílené porovnání obou stop.</p>
+        <div class="action-row">
+          <button id="verifyPrintLink" class="btn primary pulse-button">PROVĚŘIT SOUVISLOST S OTISKEM</button>
+        </div>
+      </div>
+    </div>`;
+  const btn = document.getElementById('verifyPrintLink');
+  btn.addEventListener('click', verifyFingerprintLink);
+  setTimeout(() => follow.scrollIntoView({behavior:'smooth', block:'center'}), 200);
+}
+
+async function verifyFingerprintLink() {
+  const follow = document.getElementById('deepFollow');
+  if (!follow) return;
+  follow.innerHTML = `
+    <div class="deep-analysis emphasized link-check">
+      <div class="head">Cílené porovnání evidovaných stop</div>
+      <div class="body">
+        <div class="scantext" id="linkScanText">Načítám stopu z vozidla Sebastiana Rýdla…</div>
+        <div class="bar long"><span></span></div>
+        <div class="link-facts" id="linkFacts">
+          <span>STOPA 04 / OBÁLKA</span><b>↔</b><span>VOZIDLO / 9. 6. 2026</span>
+        </div>
+      </div>
+    </div>`;
+  const t = document.getElementById('linkScanText');
+  await sleep(1500);
+  if (t) t.textContent = "Porovnávám markanty a orientaci obou latentních stop…";
+  await sleep(1700);
+  if (t) t.textContent = "Shoda evidovaných stop potvrzena. Dohledávám profesní vazby osoby…";
+  showToast("SHODA OTISKU POTVRZENA", "success", 2300);
+  await sleep(2300);
+  runProfessionalLink();
 }
 
 function runProfessionalLink() {
   const follow = document.getElementById('deepFollow');
+  if (!follow) return;
   follow.innerHTML = `
-    <div class="deep-analysis">
+    <div class="deep-analysis emphasized">
       <div class="head">Doplňkové prověření osoby – Karel Liebknecht</div>
       <div class="body">
         <div class="scantext">Prověřuji zaměstnanecké a profesní vazby…<br>Porovnávám dostupné pracovní evidence…</div>
@@ -386,18 +581,26 @@ function runProfessionalLink() {
     </div>`;
   setTimeout(() => {
     follow.innerHTML = `
-      <div class="deep-analysis">
+      <div class="deep-analysis final-link">
         <div class="head">Souvislost potvrzena</div>
         <div class="body">
           <p><strong>KAREL LIEBKNECHT</strong></p>
           <p>Zaměstnanec autoservisu <strong>Vopelák s.r.o.</strong><br><strong>Chlumecká 756/5, Praha 14-Černý Most</strong></p>
           <p><span class="badge link">Významná souvislost s případem nalezena</span></p>
           <div class="action-row">
-            <button id="contactService" class="btn primary">KONTAKTOVAT AUTOSERVIS</button>
+            <button id="contactService" class="btn primary pulse-button">KONTAKTOVAT AUTOSERVIS</button>
           </div>
         </div>
       </div>`;
+    showToast("PROFESNÍ VAZBA NA AUTOSERVIS NALEZENA", "success", 3200);
     const btn = document.getElementById('contactService');
-    btn.addEventListener('click', () => window.location.href = AUTOSERVIS_URL);
-  }, 3100);
+    btn.addEventListener('click', () => {
+      if (AUTOSERVIS_URL) {
+        window.location.href = AUTOSERVIS_URL;
+      } else {
+        showSystemOverlay("EXTERNÍ ODKAZ NENÍ NASTAVEN", "Tlačítko je připravené. Finální adresa autoservisu bude doplněna později.", "info", 2400);
+      }
+    });
+    setTimeout(() => follow.scrollIntoView({behavior:'smooth', block:'center'}), 200);
+  }, 3200);
 }
