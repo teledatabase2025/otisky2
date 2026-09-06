@@ -127,12 +127,12 @@ function startScan() {
     </div>
     <div class="status-strip">
       <span class="live"><span class="dot"></span> DETEKCE LATENTNÍCH STOP</span>
-      <span id="scanText">Analýza povrchu…</span>
+      <span id="scanText">Připravuji skenování povrchu…</span>
     </div>
     <div class="envelope-stage">
       <div class="envelope-wrap">
         <img src="${ASSET('obalka.jpg')}" alt="Obálka nalezená v klubu Nocturno">
-        <div class="scanline"></div>
+        <div class="scanline" id="scanLine" style="animation:none;opacity:0;top:-3%"></div>
         <div class="fp-marker fp1" id="fp1"><span>STOPA 01</span></div>
         <div class="fp-marker fp2" id="fp2"><span>STOPA 02</span></div>
         <div class="fp-marker fp3" id="fp3"><span>STOPA 03</span></div>
@@ -141,20 +141,48 @@ function startScan() {
       </div>
     </div>`;
 
-  const timings = [700, 2300, 4200, 5500];
-  timings.forEach((t, i) => setTimeout(() => {
-    const el = document.getElementById(`fp${i+1}`);
-    if (!el) return;
-    el.classList.add("detected");
-    const counter = document.getElementById("scanCounter");
-    if (counter) counter.textContent = `DETEKOVÁNO: ${i+1} / 4`;
-  }, t));
+  // Dvě sekundy je obálka v klidu. Teprve potom začne jediný plynulý průjezd laseru.
+  const scanDelay = 2000;
+  const scanDuration = 6500;
+
+  setTimeout(() => {
+    const line = document.getElementById("scanLine");
+    const txt = document.getElementById("scanText");
+    if (txt) txt.textContent = "Skenování povrchu…";
+    if (line) {
+      line.style.opacity = "1";
+      line.style.animation = `scan ${scanDuration}ms linear 1 forwards`;
+    }
+  }, scanDelay);
+
+  // Časy odpovídají skutečné vertikální poloze otisků na obálce.
+  // Kruh se objeví ve chvíli, kdy laser prochází středem daného otisku.
+  const markerCenters = [14.85, 37.30, 76.10, 87.95];
+  const scanStart = -3;
+  const scanEnd = 103;
+  const travel = scanEnd - scanStart;
+
+  markerCenters.forEach((center, i) => {
+    const progress = (center - scanStart) / travel;
+    const t = scanDelay + Math.round(progress * scanDuration);
+    setTimeout(() => {
+      const el = document.getElementById(`fp${i + 1}`);
+      if (!el) return;
+      el.classList.add("detected");
+      const counter = document.getElementById("scanCounter");
+      if (counter) counter.textContent = `DETEKOVÁNO: ${i + 1} / 4`;
+    }, t);
+  });
+
+  const scanFinished = scanDelay + scanDuration;
   setTimeout(() => {
     const txt = document.getElementById("scanText");
     if (txt) txt.textContent = "Detekovány 4 latentní stopy";
-    showToast("DETEKOVÁNY 4 LATENTNÍ STOPY", "success", 1500);
-  }, 6100);
-  setTimeout(showFoundPrints, 7200);
+    showToast("DETEKOVÁNY 4 LATENTNÍ STOPY", "success", 1600);
+  }, scanFinished + 250);
+
+  // Výsledek necháme krátce na obrazovce, aby hráč viděl všechny čtyři zakroužkované stopy.
+  setTimeout(showFoundPrints, scanFinished + 2200);
 }
 
 function showFoundPrints() {
