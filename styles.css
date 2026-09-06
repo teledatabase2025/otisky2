@@ -216,3 +216,93 @@ button{cursor:pointer}
   .toast{font-size:17px;min-width:calc(100vw - 28px);padding:21px 18px}
   .inline-confirmation{display:block}.inline-confirmation strong{display:block;margin-bottom:5px}
 }
+
+/* ===== Výrazné nově dohledané souvislosti ===== */
+.candidate.detail-reveal .details{
+  position:relative;
+  margin:12px -5px 4px;
+  padding:0 10px 12px;
+  min-height:132px;
+  border-top:0;
+  background:linear-gradient(180deg,#eef6ff 0%,#f8fbff 100%);
+  box-shadow:inset 0 0 0 2px #9dbbda;
+  overflow:hidden;
+}
+.new-fact-badge{
+  margin:0 -10px 12px;
+  padding:8px 10px;
+  background:#0b3b6d;
+  color:#fff;
+  font-size:11px;
+  line-height:1.2;
+  font-weight:950;
+  letter-spacing:.75px;
+  text-align:center;
+  text-transform:uppercase;
+}
+.new-fact{
+  position:relative;
+  padding:14px 12px 13px;
+  background:#fff;
+  border:2px solid #2e6fa9;
+  box-shadow:0 8px 18px rgba(11,59,109,.10);
+  text-align:center;
+  transition:.2s ease;
+}
+.new-fact-label{
+  display:block;
+  margin-bottom:7px;
+  color:#0b5b9c;
+  font-size:13px;
+  line-height:1.2;
+  font-weight:950;
+  letter-spacing:.45px;
+  text-transform:uppercase;
+}
+.new-fact strong{
+  display:block;
+  color:#082c56;
+  font-size:20px;
+  line-height:1.25;
+  font-weight:950;
+  text-transform:none;
+}
+.new-fact small{
+  display:block;
+  margin-top:8px;
+  color:#405b75;
+  font-size:13px;
+  line-height:1.35;
+  font-weight:800;
+}
+.new-fact.key-fact{
+  border-width:3px;
+  border-color:#137a4c;
+  background:#effaf4;
+  box-shadow:0 9px 25px rgba(19,122,76,.17);
+}
+.new-fact.key-fact .new-fact-label{color:#137a4c}
+.new-fact.key-fact strong{color:#0d5635;font-size:22px}
+.candidate.fact-present{
+  z-index:5;
+  transform:translateY(-5px) scale(1.02);
+  box-shadow:0 0 0 7px rgba(22,75,143,.14),0 18px 38px rgba(8,44,86,.20);
+}
+.candidate.highlight.fact-present{
+  box-shadow:0 0 0 9px rgba(19,122,76,.17),0 20px 42px rgba(19,122,76,.22);
+}
+.new-fact.fact-flash{animation:newFactFlash .55s ease 3}
+@keyframes newFactFlash{
+  0%,100%{filter:none;transform:scale(1)}
+  50%{filter:brightness(1.08);transform:scale(1.025);box-shadow:0 0 0 7px rgba(46,111,169,.15),0 12px 28px rgba(11,59,109,.17)}
+}
+.new-fact.key-fact.fact-flash{animation:keyFactFlash .55s ease 4}
+@keyframes keyFactFlash{
+  0%,100%{transform:scale(1);box-shadow:0 9px 25px rgba(19,122,76,.17)}
+  50%{transform:scale(1.035);background:#dff5e9;box-shadow:0 0 0 9px rgba(19,122,76,.18),0 16px 34px rgba(19,122,76,.24)}
+}
+
+@media (max-width:900px){
+  .new-fact strong{font-size:18px}
+  .new-fact.key-fact strong{font-size:19px}
+}

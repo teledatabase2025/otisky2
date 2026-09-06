@@ -46,8 +46,8 @@ const prints = [
       { symbol: "—", count: 3, answers: ["B6", "B7", "B8"] }
     ],
     candidates: [
-      { name: "Radka Müllerová", img: "ot31.png", match: 95.4, initialUnrelated: true, detail: "Pokladní v České obchodní bance na náměstí Míru v Praze.", highlight: true },
-      { name: "Marie Tůmová", img: "ot33.png", match: 89.7, initialUnrelated: true, detail: "Zdravotní sestra v nemocnici U Svatého Prokopa." }
+      { name: "Radka Müllerová", img: "ot31.png", match: 95.4, initialUnrelated: true, detail: "Pokladní v České obchodní bance na náměstí Míru v Praze.", detailRole: "POKLADNÍ V BANCE", detailInstitution: "Československá obchodní banka (ČSOB)", detailPlace: "pracoviště: náměstí Míru, Praha", highlight: true },
+      { name: "Marie Tůmová", img: "ot33.png", match: 89.7, initialUnrelated: true, detail: "Zdravotní sestra v nemocnici U Svatého Prokopa.", detailRole: "ZDRAVOTNÍ SESTRA", detailInstitution: "Nemocnice U Svatého Prokopa", detailPlace: "zaměstnanecká vazba dohledána" }
     ]
   },
   {
@@ -62,9 +62,9 @@ const prints = [
       { symbol: "—", count: 1, answers: ["D5"] }
     ],
     candidates: [
-      { name: "Josef Pospíšil", img: "ot41.png", match: 94.6, initialUnrelated: true, detail: "Stav v evidenci: zesnulý.", dead: true },
-      { name: "František Král", img: "ot42.png", match: 87.7, initialUnrelated: true, detail: "Lesní dělník v pohraničí (Hvozdná nad Radbuzou)." },
-      { name: "Karel Liebknecht", img: "ot43.png", match: 91.2, initialUnrelated: true, detail: "Stejný otisk nalezen na vozidle Sebastiana Rýdla po autonehodě dne 9. 6. 2026.", highlight: true }
+      { name: "Josef Pospíšil", img: "ot41.png", match: 94.6, initialUnrelated: true, detail: "Stav v evidenci: zesnulý.", detailRole: "STAV V EVIDENCI", detailInstitution: "ZESNULÝ", detailPlace: "osoba vedena jako zemřelá", dead: true },
+      { name: "František Král", img: "ot42.png", match: 87.7, initialUnrelated: true, detail: "Lesní dělník v pohraničí (Hvozdná nad Radbuzou).", detailRole: "LESNÍ DĚLNÍK", detailInstitution: "Hvozdná nad Radbuzou", detailPlace: "pohraničí" },
+      { name: "Karel Liebknecht", img: "ot43.png", match: 91.2, initialUnrelated: true, detail: "Stejný otisk nalezen na vozidle Sebastiana Rýdla po autonehodě dne 9. 6. 2026.", detailRole: "SHODNÝ OTISK V JINÉM PŘÍPADU", detailInstitution: "Vozidlo Sebastiana Rýdla", detailPlace: "dopravní nehoda / 9. 6. 2026", highlight: true }
     ]
   }
 ];
@@ -341,16 +341,24 @@ function showCandidates(p) {
 function candidateCard(c, i, details, selectable = false) {
   const highlightClass = details && c.highlight ? 'highlight' : '';
   const revealClass = details ? 'detail-reveal' : '';
-  const delay = details ? `style="animation-delay:${i * 0.42}s"` : '';
+  const delaySeconds = i * 0.55;
+  const delay = details ? `style="--reveal-delay:${delaySeconds}s;animation-delay:${delaySeconds}s"` : '';
+  const detailBlock = details ? `
+    <div class="details">
+      <div class="new-fact-badge">NOVĚ DOHLEDANÁ SOUVISLOST</div>
+      ${c.dead ? '<span class="badge dead">ZESNULÝ</span>' : ''}
+      <div class="new-fact ${c.highlight ? 'key-fact' : ''}">
+        <span class="new-fact-label">${esc(c.detailRole || 'NOVÝ ÚDAJ')}</span>
+        <strong>${esc(c.detailInstitution || c.detail || '')}</strong>
+        ${c.detailPlace ? `<small>${esc(c.detailPlace)}</small>` : ''}
+      </div>
+    </div>` : '';
   return `
     <article class="candidate ${highlightClass} ${revealClass}" ${delay} data-name="${esc(c.name)}">
       <img src="${ASSET(c.img)}" alt="${esc(c.name)}">
       <h4>${esc(c.name)}</h4>
       <div class="match">KOMPATIBILITA: ${c.match.toFixed(1).replace('.',',')} %</div>
-      ${details ? `<div class="details">
-        ${c.dead ? '<span class="badge dead">Zesnulý</span><br><br>' : ''}
-        ${esc(c.detail || '')}
-      </div>` : ''}
+      ${detailBlock}
       ${selectable ? `<button class="btn secondary" data-name="${esc(c.name)}">${details ? 'VYBRAT TUTO OSOBU' : 'PROVĚŘIT SOUVISLOST'}</button>` : ''}
     </article>`;
 }
@@ -493,6 +501,20 @@ function showDeepResults(p) {
     const first = document.querySelector('.candidate.detail-reveal');
     if (first) first.scrollIntoView({behavior:'smooth', block:'center'});
   }, 350);
+
+  // Každý nově dohledaný údaj se po svém zobrazení ještě krátce výrazně „předvede“,
+  // aby hráč jasně viděl, co podrobná analýza přinesla nového.
+  document.querySelectorAll('.candidate.detail-reveal').forEach((card, i) => {
+    setTimeout(() => {
+      card.classList.add('fact-present');
+      const fact = card.querySelector('.new-fact');
+      if (fact) fact.classList.add('fact-flash');
+      setTimeout(() => {
+        card.classList.remove('fact-present');
+        if (fact) fact.classList.remove('fact-flash');
+      }, 1900);
+    }, 850 + i * 850);
+  });
 }
 
 function inspectDeepCandidate(name) {
