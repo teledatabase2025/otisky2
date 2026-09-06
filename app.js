@@ -42,12 +42,12 @@ const prints = [
     deep: true,
     groups: [
       { symbol: "O", count: 1, answers: ["A7"] },
-      { symbol: "Y", count: 2, answers: ["C2", "B1"] },
+      { symbol: "Y", count: 2, answers: ["B1", "C2"] },
       { symbol: "—", count: 3, answers: ["B6", "B7", "B8"] }
     ],
     candidates: [
       { name: "Radka Müllerová", img: "ot31.png", match: 95.4, initialUnrelated: true, detail: "Pokladní v České obchodní bance na náměstí Míru v Praze.", detailRole: "POKLADNÍ V BANCE", detailInstitution: "Československá obchodní banka (ČSOB)", detailPlace: "pracoviště: náměstí Míru, Praha", highlight: true },
-      { name: "Marie Tůmová", img: "ot33.png", match: 89.7, initialUnrelated: true, detail: "Zdravotní sestra v nemocnici U Svatého Prokopa.", detailRole: "ZDRAVOTNÍ SESTRA", detailInstitution: "Nemocnice U Svatého Prokopa", detailPlace: "zaměstnanecká vazba dohledána" }
+      { name: "Marie Tůmová", img: "ot33.png", match: 89.7, initialUnrelated: true, detail: "Zdravotní sestra v nemocnici U Svatého Prokopa.", detailRole: "ZDRAVOTNÍ SESTRA", detailInstitution: "Nemocnice U Svatého Prokopa", detailPlace: "pracovní údaj dohledán – bez zjištěné souvislosti s případem", unrelatedDetail: true }
     ]
   },
   {
@@ -345,12 +345,13 @@ function candidateCard(c, i, details, selectable = false) {
   const delay = details ? `style="--reveal-delay:${delaySeconds}s;animation-delay:${delaySeconds}s"` : '';
   const detailBlock = details ? `
     <div class="details">
-      <div class="new-fact-badge">NOVĚ DOHLEDANÁ SOUVISLOST</div>
+      <div class="new-fact-badge">${c.unrelatedDetail ? 'NOVĚ DOHLEDANÝ ÚDAJ' : 'NOVĚ DOHLEDANÁ SOUVISLOST'}</div>
       ${c.dead ? '<span class="badge dead">ZESNULÝ</span>' : ''}
-      <div class="new-fact ${c.highlight ? 'key-fact' : ''}">
+      <div class="new-fact ${c.highlight ? 'key-fact' : ''} ${c.unrelatedDetail ? 'neutral-fact' : ''}">
         <span class="new-fact-label">${esc(c.detailRole || 'NOVÝ ÚDAJ')}</span>
         <strong>${esc(c.detailInstitution || c.detail || '')}</strong>
         ${c.detailPlace ? `<small>${esc(c.detailPlace)}</small>` : ''}
+        ${c.unrelatedDetail ? '<span class="badge">BEZ ZJIŠTĚNÉ VAZBY NA PŘÍPAD</span>' : ''}
       </div>
     </div>` : '';
   return `
@@ -486,7 +487,7 @@ function showDeepResults(p) {
     </div>
     <div class="candidate-head deep-heading">
       <h3>ROZŠÍŘENÉ PROVĚŘENÍ KANDIDÁTŮ</h3>
-      <p>Každý profil byl doplněn o nově nalezenou souvislost.</p>
+      <p>Každý profil byl doplněn o nově dohledaný údaj. Ne každý nový údaj představuje souvislost s případem.</p>
     </div>
     <div class="candidates ${p.candidates.length===2?'two':''}">
       ${p.candidates.map((c,i) => candidateCard(c,i,true,true)).join('')}
