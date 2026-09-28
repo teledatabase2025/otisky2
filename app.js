@@ -42,7 +42,7 @@ const prints = [
     deep: true,
     groups: [
       { symbol: "O", count: 1, answers: ["A7"] },
-      { symbol: "Y", count: 2, answers: ["B1", "C2"] },
+      { symbol: "Y", count: 2, answers: ["A1", "C2"] },
       { symbol: "—", count: 3, answers: ["B6", "B7", "B8"] }
     ],
     candidates: [
