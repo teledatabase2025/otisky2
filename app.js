@@ -623,7 +623,7 @@ function runProfessionalLink() {
       if (AUTOSERVIS_URL) {
         window.location.href = AUTOSERVIS_URL;
       } else {
-        showSystemOverlay("EXTERNÍ ODKAZ NENÍ NASTAVEN", "Tlačítko je připravené. Finální adresa autoservisu bude doplněna později.", "info", 2400);
+        showSystemOverlay("NÁLEZ BYL PŘEDÁN", "Kpt. Králová či npor. Vávra budou autoservis kontaktovat!", "info", 2400);
       }
     });
     setTimeout(() => follow.scrollIntoView({behavior:'smooth', block:'center'}), 200);
