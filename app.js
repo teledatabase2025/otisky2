@@ -46,7 +46,7 @@ const prints = [
       { symbol: "—", count: 3, answers: ["B6", "B7", "B8"] }
     ],
     candidates: [
-      { name: "Radka Müllerová", img: "ot31.png", match: 95.4, initialUnrelated: true, detail: "Pokladní v České obchodní bance na náměstí Míru v Praze.", detailRole: "POKLADNÍ V BANCE", detailInstitution: "Československá obchodní banka (ČSOB)", detailPlace: "pracoviště: náměstí Míru, Praha", highlight: true },
+      { name: "Radka Müllerová", img: "ot31.png", match: 95.4, initialUnrelated: true, detail: "Pokladní v České obchodní bance na náměstí Míru v Praze.", detailRole: "POKLADNÍ V BANCE", detailInstitution: "Česká obchodní banka (ČOB)", detailPlace: "pracoviště: náměstí Míru, Praha", highlight: true },
       { name: "Marie Tůmová", img: "ot33.png", match: 89.7, initialUnrelated: true, detail: "Zdravotní sestra v nemocnici U Svatého Prokopa.", detailRole: "ZDRAVOTNÍ SESTRA", detailInstitution: "Nemocnice U Svatého Prokopa", detailPlace: "pracovní údaj dohledán – bez zjištěné souvislosti s případem", unrelatedDetail: true }
     ]
   },
